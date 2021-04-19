@@ -1,3 +1,9 @@
+#USER
+build
+bin
+.vscode
+package-lock*
+
 # Logs
 logs
 *.log

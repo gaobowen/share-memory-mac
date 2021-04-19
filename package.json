@@ -1,0 +1,29 @@
+{
+  "name": "share-memory-mac",
+  "version": "1.0.0",
+  "description": "share-memory-mac",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gaobowen/share-memory-mac.git"
+  },
+  "keywords": [
+    "share-memory-mac"
+  ],
+  "author": "gaobowen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gaobowen/share-memory-mac/issues"
+  },
+  "homepage": "https://github.com/gaobowen/share-memory-mac#readme",
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "node-addon-api": "^3.1.0",
+    "node-gyp": "^8.0.0",
+    "node-gyp-build": "^4.2.3",
+    "rebuild": "^0.1.2"
+  }
+}
