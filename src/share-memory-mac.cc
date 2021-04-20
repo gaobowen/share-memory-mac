@@ -9,6 +9,19 @@
 //#include <Foundation/Foundation.h>
 #include "share-memory-mac.h"
 
+//hash ref: Art Of Computer Programming Volume 3
+int DEKHash(const char* str)  
+{  
+    if(!*str)        
+        return 0;  
+    int hash = 1315423911;  
+    while (int ch = (int)*str++)  
+    {  
+        hash = ((hash << 5) ^ (hash >> 27)) ^ ch;  
+    }  
+    return hash;  
+}  
+
 Napi::Value CreateShareMemory(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
@@ -26,8 +39,7 @@ Napi::Value CreateShareMemory(const Napi::CallbackInfo &info)
     int32_t mem_size = mapsize - (mapsize % page_size) + page_size;
     //printf( "memory page size = %d /n",page_size);
 
-    std::hash<std::string> hash_box;
-    key_t name_key = hash_box(name);
+    key_t name_key = DEKHash(name.c_str());
     int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
     printf("name=[%s], hashkey=[%d], shm_id=[%d] \n", name.c_str(), name_key, shm_id);
     if (shm_id == -1)
@@ -66,8 +78,7 @@ Napi::Value ReadShareMemory(const Napi::CallbackInfo &info)
     int32_t page_size = getpagesize();
     int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
-    std::hash<std::string> hash_box;
-    key_t name_key = hash_box(name);
+    key_t name_key = DEKHash(name.c_str());
     int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
     if (shm_id != -1)
     {
@@ -107,8 +118,8 @@ Napi::Value ReadShareMemoryFast(const Napi::CallbackInfo &info)
         //new cache data
         int32_t page_size = getpagesize();
         int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
-        std::hash<std::string> hash_box;
-        key_t name_key = hash_box(name);
+
+        key_t name_key = DEKHash(name.c_str());
         int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
         if (shm_id != -1)
         {
@@ -143,8 +154,7 @@ Napi::Value WriteShareMemory(const Napi::CallbackInfo &info)
     int32_t page_size = getpagesize();
     int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
-    std::hash<std::string> hash_box;
-    key_t name_key = hash_box(name);
+    key_t name_key = DEKHash(name.c_str());
     int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
     if (shm_id != -1)
     {
@@ -184,8 +194,8 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
         //new cache data
         int32_t page_size = getpagesize();
         int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
-        std::hash<std::string> hash_box;
-        key_t name_key = hash_box(name);
+
+        key_t name_key = DEKHash(name.c_str());
         int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
         if (shm_id != -1)
         {
