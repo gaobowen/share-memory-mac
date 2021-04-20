@@ -176,7 +176,7 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
     std::map<std::string, CachedData>::iterator it = _sharedCachedData.find(name);
     if (it != _sharedCachedData.end())
     {
-        memcpy(buff.Data(), _sharedCachedData[name].ptr, bufflen);
+        memcpy(_sharedCachedData[name].ptr, buff.Data(), bufflen);
         return Napi::Boolean::New(env, true);
     }
     else
