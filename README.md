@@ -3,41 +3,44 @@ a share memory module between diffrent process on windows. runtime nodejs/electr
 
 ## example
 ```js
-const smemory = require('share-memory-mac');
+const smemory = require('./index');
 console.log('Init Share Memory=>', smemory);
 
+const name = "share-memory-mac";
 
-let ret = smemory.CreateShareMemory('my-addon-test-memory', 64);
+let ret = smemory.CreateShareMemory(name, 1280 * 720 * 4 * 3);
 console.log('CreateShareMemory=>', ret);
-//CreateShareMemory=> true
 
+if (!ret) {
+  console.log('shmmax require greater than 40,000k byte; also you can bash "sudo shmmax_set.sh && cat /etc/sysctl.conf" and reboot computer')
+}
 
 let writebuff = Buffer.alloc(10);
-writebuff[0] = 9;
-writebuff[1] = 7;
+
+writebuff[0] = 1;
+writebuff[1] = 3;
 writebuff[2] = 5;
-writebuff[3] = 3;
-writebuff[4] = 1;
-ret = smemory.WriteShareMemory('my-addon-test-memory', writebuff);
-console.log('WriteShareMemory=>', ret);
-//WriteShareMemory=> true
-
-
-let readbuff = Buffer.alloc(10);
-ret = smemory.ReadShareMemory('my-addon-test-memory', readbuff);
-console.log('ReadShareMemory=> ', ret, readbuff);
-//ReadShareMemory=>  true <Buffer 09 07 05 03 01 00 00 00 00 00>
-
-
-ret = smemory.DeleteShareMemory('my-addon-test-memory');
-console.log('DeleteShareMemory=> ', ret);
-//DeleteShareMemory=>  true
-
+writebuff[3] = 7;
+writebuff[4] = 9;
+ret = smemory.WriteShareMemoryFast(name, writebuff, 1);
+console.log('WriteShareMemoryFast =>', ret);
 
 readbuff = Buffer.alloc(10);
-ret = smemory.ReadShareMemory('my-addon-test-memory', readbuff);
-console.log('ReadShareMemory=> ', ret, readbuff);
-//ReadShareMemory=>  false <Buffer 00 00 00 00 00 00 00 00 00 00>
+ret = smemory.ReadShareMemoryFast(name, readbuff);
+console.log('ReadShareMemoryFast => ', ret, readbuff);
+
+readbuff = Buffer.alloc(10);
+ret = smemory.ReadShareMemoryFast(name, readbuff, 3);
+console.log('ReadShareMemoryFast => ', ret, readbuff);
+
+
+ret = smemory.DeleteShareMemory(name);
+console.log('DeleteShareMemory => ', ret);
+
+readbuff = Buffer.alloc(10);
+ret = smemory.ReadShareMemoryFast(name, readbuff);
+console.log('ReadShareMemoryFast => ', ret, readbuff);
+
 ```
 
 ## install

@@ -10,17 +10,19 @@
 #include "share-memory-mac.h"
 
 //hash ref: Art Of Computer Programming Volume 3
-int DEKHash(const char* str)  
-{  
-    if(!*str)        
-        return 0;  
-    int hash = 1315423911;  
-    while (int ch = (int)*str++)  
-    {  
-        hash = ((hash << 5) ^ (hash >> 27)) ^ ch;  
-    }  
-    return hash;  
-}  
+int DEKHash(const char *str)
+{
+    if (!*str)
+        return 0;
+    int hash = 1315423911;
+    int ch = (int)*str++;
+    do
+    {
+        hash = ((hash << 5) ^ (hash >> 27)) ^ ch;
+        ch = (int)*str++;
+    } while (ch);
+    return hash;
+}
 
 Napi::Value CreateShareMemory(const Napi::CallbackInfo &info)
 {
@@ -44,6 +46,8 @@ Napi::Value CreateShareMemory(const Napi::CallbackInfo &info)
     printf("name=[%s], hashkey=[%d], shm_id=[%d] \n", name.c_str(), name_key, shm_id);
     if (shm_id == -1)
     {
+        shm_id = shmget(name_key, page_size, 0666);
+        printf("name=[%s], hashkey=[%d], shm_id=[%d] \n", name.c_str(), name_key, shm_id);
         printf("share memory [%s] create failed. \n", name.c_str());
         return Napi::Boolean::New(env, false);
     }
@@ -51,12 +55,6 @@ Napi::Value CreateShareMemory(const Napi::CallbackInfo &info)
     {
         _shareMemoryMap[name] = shm_id;
     }
-
-    //unsigned char* shared_memory = (unsigned char*)shmat(shm_id, 0, 0);
-    // memset(shared_memory, 99, mem_size);
-    // printf("shared_memory[mem_size - 3] = %d \n", shared_memory[mem_size - 3]);
-    // shmdt(shared_memory);
-    // shmctl(shm_id, IPC_RMID, 0);
 
     return Napi::Boolean::New(env, true);
 }
@@ -71,6 +69,12 @@ Napi::Value ReadShareMemory(const Napi::CallbackInfo &info)
         return Napi::Boolean::New(env, false);
     if (!info[1].IsBuffer())
         return Napi::Boolean::New(env, false);
+    int offset = 0;
+    if (info.Length() == 3 && info[2].IsNumber())
+    {
+        offset = info[2].As<Napi::Number>().Int32Value();
+    }
+
     std::string name = info[0].As<Napi::String>().Utf8Value();
     Napi::Buffer<unsigned char> buff = info[1].As<Napi::Buffer<unsigned char> >();
     size_t bufflen = buff.ByteLength();
@@ -79,12 +83,14 @@ Napi::Value ReadShareMemory(const Napi::CallbackInfo &info)
     int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
     key_t name_key = DEKHash(name.c_str());
-    int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
+    int shm_id = shmget(name_key, mem_size, 0666);
     if (shm_id != -1)
     {
         void *ptr = shmat(shm_id, 0, 0);
         if (ptr)
         {
+            unsigned char *m_ptr = (unsigned char *)ptr;
+            m_ptr += offset;
             memcpy(buff.Data(), ptr, bufflen);
             shmdt(ptr); //引用计数减一
             return Napi::Boolean::New(env, true);
@@ -103,6 +109,12 @@ Napi::Value ReadShareMemoryFast(const Napi::CallbackInfo &info)
         return Napi::Boolean::New(env, false);
     if (!info[1].IsBuffer())
         return Napi::Boolean::New(env, false);
+    int offset = 0;
+    if (info.Length() == 3 && info[2].IsNumber())
+    {
+        offset = info[2].As<Napi::Number>().Int32Value();
+    }
+
     std::string name = info[0].As<Napi::String>().Utf8Value();
     Napi::Buffer<unsigned char> buff = info[1].As<Napi::Buffer<unsigned char> >();
     size_t bufflen = buff.ByteLength();
@@ -110,7 +122,9 @@ Napi::Value ReadShareMemoryFast(const Napi::CallbackInfo &info)
     std::map<std::string, CachedData>::iterator it = _sharedCachedData.find(name);
     if (it != _sharedCachedData.end())
     {
-        memcpy(buff.Data(), _sharedCachedData[name].ptr, bufflen);
+        unsigned char *m_ptr = (unsigned char *)_sharedCachedData[name].ptr;
+        m_ptr += offset;
+        memcpy(buff.Data(), m_ptr, bufflen);
         return Napi::Boolean::New(env, true);
     }
     else
@@ -120,7 +134,7 @@ Napi::Value ReadShareMemoryFast(const Napi::CallbackInfo &info)
         int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
         key_t name_key = DEKHash(name.c_str());
-        int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
+        int shm_id = shmget(name_key, mem_size, 0666);
         if (shm_id != -1)
         {
             void *ptr = shmat(shm_id, 0, 0);
@@ -128,7 +142,9 @@ Napi::Value ReadShareMemoryFast(const Napi::CallbackInfo &info)
             {
                 _sharedCachedData[name].open_id = shm_id;
                 _sharedCachedData[name].ptr = ptr;
-                memcpy(buff.Data(), ptr, bufflen);
+                unsigned char *m_ptr = (unsigned char *)_sharedCachedData[name].ptr;
+                m_ptr += offset;
+                memcpy(buff.Data(), m_ptr, bufflen);
                 return Napi::Boolean::New(env, true);
             }
         }
@@ -147,6 +163,12 @@ Napi::Value WriteShareMemory(const Napi::CallbackInfo &info)
         return Napi::Boolean::New(env, false);
     if (!info[1].IsBuffer())
         return Napi::Boolean::New(env, false);
+    int offset = 0;
+    if (info.Length() == 3 && info[2].IsNumber())
+    {
+        offset = info[2].As<Napi::Number>().Int32Value();
+    }
+
     std::string name = info[0].As<Napi::String>().Utf8Value();
     Napi::Buffer<unsigned char> buff = info[1].As<Napi::Buffer<unsigned char> >();
     size_t bufflen = buff.ByteLength();
@@ -155,13 +177,15 @@ Napi::Value WriteShareMemory(const Napi::CallbackInfo &info)
     int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
     key_t name_key = DEKHash(name.c_str());
-    int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
+    int shm_id = shmget(name_key, mem_size, 0666);
     if (shm_id != -1)
     {
         void *ptr = shmat(shm_id, 0, 0);
         if (ptr)
         {
-            memcpy(ptr, buff.Data(), bufflen);
+            unsigned char *m_ptr = (unsigned char *)ptr;
+            m_ptr += offset;
+            memcpy(m_ptr, buff.Data(), bufflen);
             shmdt(ptr); //引用计数减一
             return Napi::Boolean::New(env, true);
         }
@@ -179,6 +203,14 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
         return Napi::Boolean::New(env, false);
     if (!info[1].IsBuffer())
         return Napi::Boolean::New(env, false);
+    int offset = 0;
+    if (info.Length() == 3 && info[2].IsNumber())
+    {
+        offset = info[2].As<Napi::Number>().Int32Value();
+    }
+
+
+
     std::string name = info[0].As<Napi::String>().Utf8Value();
     Napi::Buffer<unsigned char> buff = info[1].As<Napi::Buffer<unsigned char> >();
     size_t bufflen = buff.ByteLength();
@@ -186,7 +218,9 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
     std::map<std::string, CachedData>::iterator it = _sharedCachedData.find(name);
     if (it != _sharedCachedData.end())
     {
-        memcpy(_sharedCachedData[name].ptr, buff.Data(), bufflen);
+        unsigned char *m_ptr = (unsigned char *)_sharedCachedData[name].ptr;
+        m_ptr += offset;
+        memcpy(m_ptr, buff.Data(), bufflen);
         return Napi::Boolean::New(env, true);
     }
     else
@@ -196,7 +230,7 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
         int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
         key_t name_key = DEKHash(name.c_str());
-        int shm_id = shmget(name_key, mem_size, 0666 | IPC_CREAT);
+        int shm_id = shmget(name_key, mem_size, 0666);
         if (shm_id != -1)
         {
             void *ptr = shmat(shm_id, 0, 0);
@@ -204,7 +238,10 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
             {
                 _sharedCachedData[name].open_id = shm_id;
                 _sharedCachedData[name].ptr = ptr;
-                memcpy(ptr, buff.Data(), bufflen);
+                unsigned char *m_ptr = (unsigned char *)_sharedCachedData[name].ptr;
+                m_ptr += offset;
+                //printf("WriteShareMemory %d %ld %ld \n", offset, _sharedCachedData[name].ptr, m_ptr);
+                memcpy(m_ptr, buff.Data(), bufflen);
                 return Napi::Boolean::New(env, true);
             }
         }
@@ -213,6 +250,7 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
     return Napi::Boolean::New(env, false);
 }
 
+//ipcs -m  //ipcrm -m [shm_id]
 Napi::Value DeleteShareMemory(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
@@ -226,6 +264,7 @@ Napi::Value DeleteShareMemory(const Napi::CallbackInfo &info)
     std::map<std::string, CachedData>::iterator itc = _sharedCachedData.find(name);
     if (itc != _sharedCachedData.end())
     {
+        printf("DeleteShareMemory ptr %s  \n", name.c_str());
         shmdt(_sharedCachedData[name].ptr);
         shmctl(_sharedCachedData[name].open_id, IPC_RMID, 0);
         _sharedCachedData.erase(name);
@@ -234,6 +273,7 @@ Napi::Value DeleteShareMemory(const Napi::CallbackInfo &info)
     std::map<std::string, int>::iterator it = _shareMemoryMap.find(name);
     if (it != _shareMemoryMap.end())
     {
+        printf("DeleteShareMemory id %s \n", name.c_str());
         shmctl(_shareMemoryMap[name], IPC_RMID, 0);
         _shareMemoryMap.erase(name);
     }
