@@ -9,6 +9,8 @@
 //#include <Foundation/Foundation.h>
 #include "share-memory-mac.h"
 
+
+int pagesize = 1024 * 4;
 //hash ref: Art Of Computer Programming Volume 3
 int DEKHash(const char *str)
 {
@@ -37,7 +39,7 @@ Napi::Value CreateShareMemory(const Napi::CallbackInfo &info)
         return Napi::Boolean::New(env, false);
     std::string name = info[0].As<Napi::String>().Utf8Value();
     int32_t mapsize = info[1].As<Napi::Number>().Int32Value();
-    int32_t page_size = getpagesize();
+    int32_t page_size = pagesize;
     int32_t mem_size = mapsize - (mapsize % page_size) + page_size;
     //printf( "memory page size = %d /n",page_size);
 
@@ -79,7 +81,7 @@ Napi::Value ReadShareMemory(const Napi::CallbackInfo &info)
     Napi::Buffer<unsigned char> buff = info[1].As<Napi::Buffer<unsigned char> >();
     size_t bufflen = buff.ByteLength();
 
-    int32_t page_size = getpagesize();
+    int32_t page_size = pagesize;
     int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
     key_t name_key = DEKHash(name.c_str());
@@ -130,7 +132,7 @@ Napi::Value ReadShareMemoryFast(const Napi::CallbackInfo &info)
     else
     {
         //new cache data
-        int32_t page_size = getpagesize();
+        int32_t page_size = pagesize;
         int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
         key_t name_key = DEKHash(name.c_str());
@@ -173,7 +175,7 @@ Napi::Value WriteShareMemory(const Napi::CallbackInfo &info)
     Napi::Buffer<unsigned char> buff = info[1].As<Napi::Buffer<unsigned char> >();
     size_t bufflen = buff.ByteLength();
 
-    int32_t page_size = getpagesize();
+    int32_t page_size = pagesize;
     int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
     key_t name_key = DEKHash(name.c_str());
@@ -226,7 +228,7 @@ Napi::Value WriteShareMemoryFast(const Napi::CallbackInfo &info)
     else
     {
         //new cache data
-        int32_t page_size = getpagesize();
+        int32_t page_size = pagesize;
         int32_t mem_size = bufflen - (bufflen % page_size) + page_size;
 
         key_t name_key = DEKHash(name.c_str());

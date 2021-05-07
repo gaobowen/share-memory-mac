@@ -11,10 +11,6 @@ const name = "share-memory-mac";
 let ret = smemory.CreateShareMemory(name, 1280 * 720 * 4 * 3);
 console.log('CreateShareMemory=>', ret);
 
-if (!ret) {
-  console.log('shmmax require greater than 40,000k byte; also you can bash "sudo shmmax_set.sh && cat /etc/sysctl.conf" and reboot computer')
-}
-
 let writebuff = Buffer.alloc(10);
 
 writebuff[0] = 1;
@@ -40,6 +36,8 @@ console.log('DeleteShareMemory => ', ret);
 readbuff = Buffer.alloc(10);
 ret = smemory.ReadShareMemoryFast(name, readbuff);
 console.log('ReadShareMemoryFast => ', ret, readbuff);
+
+smemory.DeleteShareMemory(name, 1280 * 720 * 4 * 3);
 
 ```
 
